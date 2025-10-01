@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+.custom-green {
+    background-color: rgb(58, 151, 63);
+}
+
+* body {
+   background-color: #f3f4f6;
+}
+
+/* Foco visible global (sin tocar config de Tailwind) */
+:where(button, a, input, select, textarea) {
+   outline: none;
+}
+:where(button, a, input, select, textarea):focus-visible {
+   box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+}
+
+/* Reglas de impresión */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  /* Ocultar elementos de navegación/auxiliares */
+  nav, .sidebar, .no-print, .Toastify, .toast, .fixed, .sticky { display: none !important; }
+
+  /* Forzar fondo blanco y texto oscuro */
+  html, body { background: #ffffff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* Contenedor principal más angosto para caber en A4 sin cortes */
+  #root { width: 100% !important; }
+  .print-container { max-width: 190mm !important; margin: 0 auto !important; }
+
+  /* Quitar márgenes/padding excesivos que cortan página */
+  .p-4, .p-3, .p-2 { padding: 8px !important; }
+  .mb-4, .mt-4, .my-4 { margin: 10px 0 !important; }
+
+  /* Evitar scroll horizontal en tablas y cajas */
+  .overflow-x-auto, .overflow-auto { overflow: visible !important; }
+  table { width: 100% !important; table-layout: fixed !important; border-collapse: collapse !important; }
+  th, td { white-space: normal !important; word-break: break-word !important; padding: 4px !important; font-size: 12px !important; }
+
+  /* Inputs legibles en papel */
+  input, select, textarea { font-size: 12px !important; height: auto !important; padding: 2px 4px !important; background: #fff !important; color: #000 !important; }
+  input[type="radio"], input[type="checkbox"] { transform: scale(0.9); margin: 0 4px !important; }
+  /* Ocultar barras de scroll si aún aparecen */
+  ::-webkit-scrollbar { display: none; }
+
+  /* Evitar cortes de filas; permitir que bloques se encadenen en la misma página */
+  .readonly-form thead { display: table-header-group !important; }
+  .readonly-form tfoot { display: table-footer-group !important; }
+  .readonly-form tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+  /* No aplicar a todos los contenedores, solo a filas para no forzar páginas vacías */
+  .readonly-form h2, .readonly-form h3 { margin-top: 6px !important; margin-bottom: 6px !important; break-after: avoid-page !important; }
+}
