@@ -1,0 +1,7 @@
+# Ignorar configuración y datos sensibles
+servidor/config.env
+servidor/.env
+servidor/bd.js
+servidor/basededatos.sql
+servidor/backup/
+servidor/node_modules/
