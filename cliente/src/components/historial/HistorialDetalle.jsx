@@ -125,7 +125,7 @@ export default function HistorialDetalle() {
         <div><span className="text-xs text-gray-600">Máquina</span><div className="text-sm">{sesion.tipoMaquina || ''}</div></div>
         <div><span className="text-xs text-gray-600">Modelo</span><div className="text-sm">{sesion.modelo || ''}</div></div>
         <div><span className="text-xs text-gray-600">Serie</span><div className="text-sm">{sesion.serie_maquina || ''}</div></div>
-        <div><span className="text-xs text-gray-600">Legajo</span><div className="text-sm">{sesion.legajo}</div></div>
+  <div><span className="text-xs text-gray-600">Técnico</span><div className="text-sm">{sesion.usuario_nombre || ''}</div></div>
       </div>
       <div className="bg-white p-3 rounded border readonly-form">
         {Number(sesion.idTipoChequeo) === 1 && (

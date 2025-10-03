@@ -1,10 +1,27 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react';
+import Select from 'react-select';
 import { useParams } from 'react-router-dom';
 import { API_URLS } from '../../config/api';
 
 const InformeGeneralTractor = ({ selectedModelId, readOnly = false, valuesById }) => {
   const { idTipoChequeo } = useParams();
   const [cliente, setCliente] = useState('');
+  const [clientesOptions, setClientesOptions] = useState([]);
+  const [clientesLoading, setClientesLoading] = useState(false);
+  useEffect(() => {
+    setClientesLoading(true);
+    fetch(API_URLS.CLIENTES)
+      .then(res => res.json())
+      .then(data => {
+        setClientesOptions(
+          Array.isArray(data)
+            ? data.map(c => ({ value: c.EMPRESA, label: c.EMPRESA, id: c.IDCLIENTE }))
+            : []
+        );
+      })
+      .catch(() => setClientesOptions([]))
+      .finally(() => setClientesLoading(false));
+  }, []);
   const [ubicacion, setUbicacion] = useState('');
   const [marca, setMarca] = useState('');
   const [modelo, setModelo] = useState('');
@@ -37,6 +54,8 @@ const InformeGeneralTractor = ({ selectedModelId, readOnly = false, valuesById }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const ok = window.confirm('Una vez envíes este formulario, no podrás editarlo. ¿Estás seguro que deseas enviar?');
+    if (!ok) return;
     setStatusMsg('');
     try {
       const storedUser = localStorage.getItem('user');
@@ -177,7 +196,17 @@ const InformeGeneralTractor = ({ selectedModelId, readOnly = false, valuesById }
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
             <div>
               <label className="block text-sm text-gray-700">CLIENTE:</label>
-              <input type="text" className="border rounded w-full h-10 px-3" value={cliente} onChange={(e)=>setCliente(e.target.value)} readOnly={readOnly} />
+              <Select
+                isClearable
+                isSearchable
+                isLoading={clientesLoading}
+                options={clientesOptions}
+                value={clientesOptions.find(opt => opt.value === cliente) || null}
+                onChange={opt => setCliente(opt ? opt.value : '')}
+                placeholder={clientesLoading ? 'Cargando clientes...' : 'Seleccione un cliente'}
+                noOptionsMessage={() => clientesLoading ? 'Cargando...' : 'Sin resultados'}
+                classNamePrefix="react-select"
+              />
             </div>
             <div>
               <label className="block text-sm text-gray-700">UBICACION:</label>

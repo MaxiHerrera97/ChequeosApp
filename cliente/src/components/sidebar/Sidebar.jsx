@@ -54,8 +54,9 @@ const Sidebar = ({ isLoggedIn, toggleSidebar, onModelSelect, onTipoMaquinaSelect
     };
 
     const handleModelClick = (idModelo) => {
-        console.log('Modelo seleccionado:', idModelo); // Log para verificar el ID
-        onModelSelect(idModelo); // Llamar a la función para seleccionar el modelo
+        const modeloObj = modelos.find(m => m.idModelo === idModelo);
+        const modeloNombre = modeloObj ? modeloObj.modelo : '';
+        onModelSelect(idModelo, modeloNombre); // Pasar ambos valores
         toggleSidebarLocal(); // Cerrar el sidebar después de seleccionar
     };
 

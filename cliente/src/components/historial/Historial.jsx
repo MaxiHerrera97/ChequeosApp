@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import Select from 'react-select';
 import { API_URLS } from '../../config/api';
 import { useNavigate } from 'react-router-dom';
 
@@ -23,6 +24,22 @@ export default function Historial() {
     desde: '',
     hasta: ''
   });
+  const [clientesOptions, setClientesOptions] = useState([]);
+  const [clientesLoading, setClientesLoading] = useState(false);
+  useEffect(() => {
+    setClientesLoading(true);
+    fetch(API_URLS.CLIENTES)
+      .then(res => res.json())
+      .then(data => {
+        setClientesOptions(
+          Array.isArray(data)
+            ? data.map(c => ({ value: c.EMPRESA, label: c.EMPRESA, id: c.IDCLIENTE }))
+            : []
+        );
+      })
+      .catch(() => setClientesOptions([]))
+      .finally(() => setClientesLoading(false));
+  }, []);
 
   const [loading, setLoading] = useState(false);
   const [resultados, setResultados] = useState([]);
@@ -124,7 +141,17 @@ export default function Historial() {
         </div>
         <div>
           <label className="text-xs text-gray-700">Cliente</label>
-          <input name="cliente" value={filtros.cliente} onChange={onChange} className="w-full border rounded h-9 px-2 text-sm" placeholder="Cliente" />
+          <Select
+            isClearable
+            isSearchable
+            isLoading={clientesLoading}
+            options={clientesOptions}
+            value={clientesOptions.find(opt => opt.value === filtros.cliente) || null}
+            onChange={opt => setFiltros((prev) => ({ ...prev, cliente: opt ? opt.value : '' }))}
+            placeholder={clientesLoading ? 'Cargando clientes...' : 'Seleccione un cliente'}
+            noOptionsMessage={() => clientesLoading ? 'Cargando...' : 'Sin resultados'}
+            classNamePrefix="react-select"
+          />
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
@@ -154,7 +181,7 @@ export default function Historial() {
               <th className="border p-2">Tipo Máquina</th>
               <th className="border p-2">Modelo</th>
               <th className="border p-2">Serie</th>
-              <th className="border p-2">Legajo</th>
+              <th className="border p-2">Técnico</th>
             </tr>
           </thead>
           <tbody>
@@ -168,7 +195,7 @@ export default function Historial() {
                 <td className="border p-2">{r.tipoMaquina || ''}</td>
                 <td className="border p-2">{r.modelo || ''}</td>
                 <td className="border p-2">{r.serie_maquina || ''}</td>
-                <td className="border p-2">{r.legajo}</td>
+                <td className="border p-2">{r.usuario_nombre || ''}</td>
               </tr>
             ))}
           </tbody>

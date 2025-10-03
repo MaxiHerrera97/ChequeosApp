@@ -1,11 +1,29 @@
 import React, { useEffect, useState } from 'react';
+import Select from 'react-select';
 import { useParams } from 'react-router-dom';
 import { API_URLS } from '../../../config/api';
 
-const ChequeoForm = ({ selectedModelId, readOnly = false, valuesById }) => {
+// Ahora acepta selectedModelName
+const ChequeoForm = ({ selectedModelId, selectedModelName = '', readOnly = false, valuesById }) => {
   const { idTipoChequeo } = useParams();
   const [idSesion, setIdSesion] = useState(null);
   const [cliente, setCliente] = useState('');
+  const [clientesOptions, setClientesOptions] = useState([]);
+  const [clientesLoading, setClientesLoading] = useState(false);
+  useEffect(() => {
+    setClientesLoading(true);
+    fetch(API_URLS.CLIENTES)
+      .then(res => res.json())
+      .then(data => {
+        setClientesOptions(
+          Array.isArray(data)
+            ? data.map(c => ({ value: c.EMPRESA, label: c.EMPRESA, id: c.IDCLIENTE }))
+            : []
+        );
+      })
+      .catch(() => setClientesOptions([]))
+      .finally(() => setClientesLoading(false));
+  }, []);
   const [horaMaquina, setHoraMaquina] = useState('');
   const [serieMaquina, setSerieMaquina] = useState('');
   const [fecha, setFecha] = useState('');
@@ -26,17 +44,33 @@ const ChequeoForm = ({ selectedModelId, readOnly = false, valuesById }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Confirmación antes de enviar
+    const ok = window.confirm('Una vez envíes este formulario, no podrás editarlo. ¿Estás seguro que deseas enviar?');
+    if (!ok) return;
     setStatusMsg('');
     try {
       const storedUser = localStorage.getItem('user');
       const user = storedUser ? JSON.parse(storedUser) : null;
       if (!user || !user.legajo) {
-        throw new Error('Usuario no autenticado');
+        setStatusType('error');
+        setStatusMsg('Error: Usuario no autenticado o legajo no disponible. Vuelve a iniciar sesión.');
+        setShowToast(true);
+        return;
+      }
+      if (!idTipoChequeo || isNaN(Number(idTipoChequeo))) {
+        setStatusType('error');
+        setStatusMsg('Error: Tipo de chequeo inválido. Vuelve a ingresar desde el menú principal.');
+        setShowToast(true);
+        return;
       }
       const modeloId = selectedModelId ? Number(selectedModelId) : Number(modeloMaquina);
       if (!Number.isFinite(modeloId)) {
-        throw new Error('Modelo de máquina inválido (ID). Selecciona un modelo válido.');
+        setStatusType('error');
+        setStatusMsg('Modelo de máquina inválido (ID). Selecciona un modelo válido.');
+        setShowToast(true);
+        return;
       }
+      const usuario_nombre = `${user.nombre} ${user.apellido}`;
       const nowBuenosAires = (() => {
         const formatter = new Intl.DateTimeFormat('en-CA', {
           timeZone: 'America/Argentina/Buenos_Aires',
@@ -49,6 +83,7 @@ const ChequeoForm = ({ selectedModelId, readOnly = false, valuesById }) => {
       })();
       const payload = {
         legajo: user.legajo,
+        usuario_nombre,
         idTipoChequeo: Number(idTipoChequeo) || idTipoChequeo,
         cliente,
         hora_maquina: horaMaquina,
@@ -149,7 +184,17 @@ const ChequeoForm = ({ selectedModelId, readOnly = false, valuesById }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm text-gray-700">CLIENTE:</label>
-              <input type="text" className="border rounded w-full h-10 px-3" value={cliente} onChange={(e)=>setCliente(e.target.value)} />
+              <Select
+                isClearable
+                isSearchable
+                isLoading={clientesLoading}
+                options={clientesOptions}
+                value={clientesOptions.find(opt => opt.value === cliente) || null}
+                onChange={opt => setCliente(opt ? opt.value : '')}
+                placeholder={clientesLoading ? 'Cargando clientes...' : 'Seleccione un cliente'}
+                noOptionsMessage={() => clientesLoading ? 'Cargando...' : 'Sin resultados'}
+                classNamePrefix="react-select"
+              />
             </div>
             <div>
               <label className="block text-sm text-gray-700">HS MAQUINA:</label>
@@ -160,8 +205,15 @@ const ChequeoForm = ({ selectedModelId, readOnly = false, valuesById }) => {
               <input type="text" className="border rounded w-full h-10 px-3" value={serieMaquina} onChange={(e)=>setSerieMaquina(e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm text-gray-700">MODELO MÁQUINA (ID):</label>
-              <input type="text" className="border rounded w-full h-10 px-3" value={selectedModelId || modeloMaquina} onChange={(e)=>setModeloMaquina(e.target.value)} disabled={!!selectedModelId} />
+              <label className="block text-sm text-gray-700">MODELO MÁQUINA:</label>
+              {/* Mostrar el nombre si está disponible, si no el ID, si no el input editable */}
+              {selectedModelName ? (
+                <input type="text" className="border rounded w-full h-10 px-3 bg-gray-100" value={selectedModelName} readOnly />
+              ) : selectedModelId ? (
+                <input type="text" className="border rounded w-full h-10 px-3 bg-gray-100" value={selectedModelId} readOnly />
+              ) : (
+                <input type="text" className="border rounded w-full h-10 px-3" value={modeloMaquina} onChange={(e)=>setModeloMaquina(e.target.value)} />
+              )}
             </div>
             <div>
               <label className="block text-sm text-gray-700">FECHA:</label>

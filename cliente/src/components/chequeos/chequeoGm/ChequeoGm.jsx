@@ -1,12 +1,31 @@
 import React, { useEffect, useState } from 'react';
+import Select from 'react-select';
 import { useParams } from 'react-router-dom';
 import { API_URLS } from '../../../config/api';
 
-const ChequeoGm = ({ selectedModelId, readOnly = false, valuesById }) => {
-  const { idTipoChequeo } = useParams();
+const ChequeoGm = ({ selectedModelId, selectedModelName = '', readOnly = false, valuesById }) => {
+  const { idTipoChequeo: paramTipoChequeo } = useParams();
+  // Si no viene por params (ruta /chequeo-general), usar 6
+  const idTipoChequeo = paramTipoChequeo !== undefined ? paramTipoChequeo : 6;
   const [observaciones, setObservaciones] = useState('');
   const [funciona, setFunciona] = useState({}); // Estado para almacenar las selecciones
   const [cliente, setCliente] = useState('');
+  const [clientesOptions, setClientesOptions] = useState([]);
+  const [clientesLoading, setClientesLoading] = useState(false);
+  useEffect(() => {
+    setClientesLoading(true);
+    fetch(API_URLS.CLIENTES)
+      .then(res => res.json())
+      .then(data => {
+        setClientesOptions(
+          Array.isArray(data)
+            ? data.map(c => ({ value: c.EMPRESA, label: c.EMPRESA, id: c.IDCLIENTE }))
+            : []
+        );
+      })
+      .catch(() => setClientesOptions([]))
+      .finally(() => setClientesLoading(false));
+  }, []);
   const [modeloMaquina, setModeloMaquina] = useState('');
   const [serieMaquina, setSerieMaquina] = useState('');
   const [respuestasMap, setRespuestasMap] = useState({}); // { [idPregunta]: valor }
@@ -72,21 +91,32 @@ const ChequeoGm = ({ selectedModelId, readOnly = false, valuesById }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const ok = window.confirm('Una vez envíes este formulario, no podrás editarlo. ¿Estás seguro que deseas enviar?');
+    if (!ok) return;
     setStatusMsg('');
     try {
       const storedUser = localStorage.getItem('user');
       const user = storedUser ? JSON.parse(storedUser) : null;
       if (!user || !user.legajo) {
-        throw new Error('Usuario no autenticado'); 
+        setStatusType('error');
+        setStatusMsg('Error: Usuario no autenticado o legajo no disponible. Vuelve a iniciar sesión.');
+        setShowToast(true);
+        return;
       }
-
+      if (!idTipoChequeo || isNaN(Number(idTipoChequeo))) {
+        setStatusType('error');
+        setStatusMsg('Error: Tipo de chequeo inválido. Vuelve a ingresar desde el menú principal.');
+        setShowToast(true);
+        return;
+      }
       const modeloId = selectedModelId ? Number(selectedModelId) : Number(modeloMaquina);
       if (!Number.isFinite(modeloId)) {
-        throw new Error('Modelo de máquina inválido (ID). Selecciona un modelo válido.');
+        setStatusType('error');
+        setStatusMsg('Modelo de máquina inválido (ID). Selecciona un modelo válido.');
+        setShowToast(true);
+        return;
       }
-
       const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
-
       const payload = {
         legajo: user.legajo,
         idTipoChequeo: Number(idTipoChequeo) || idTipoChequeo,
@@ -168,101 +198,110 @@ const ChequeoGm = ({ selectedModelId, readOnly = false, valuesById }) => {
 
   return (
     
-    <div className="p-4 ">
-      <form onSubmit={handleSubmit}>
-      <div className='shadow bg-gray-100 border border-gray-200 mb-4 p-4 rounded-xl'>
-      <h2 className="text-2xl font-bold mb-4">CONTROL DE FUNCIONAMIENTO GENERAL DE MAQUINA</h2>
+    <div className="p-4">
       {showToast && (
         <div className={`fixed right-4 bottom-4 z-50 shadow-lg rounded-lg px-4 py-3 border text-sm transition-all ${statusType === 'success' ? 'bg-green-600/95 text-white border-green-700' : 'bg-red-600/95 text-white border-red-700'}`}>
           <div className="font-semibold mb-0.5">{statusType === 'success' ? 'Éxito' : 'Error'}</div>
           <div>{statusMsg}</div>
         </div>
       )}
-      {!readOnly && (
-        <>
-          <div className="mb-4">
+      <form onSubmit={handleSubmit}>
+        <div className='shadow bg-gray-100 border border-gray-200 mb-4 p-4 rounded-xl'>
+          <h2 className="text-2xl font-bold mb-4">CONTROL DE FUNCIONAMIENTO GENERAL DE MAQUINA</h2>
+          <div>
             <label>CLIENTE:</label>
-            <input type="text" className="border rounded w-full" value={cliente} onChange={(e)=>setCliente(e.target.value)} />
+            <Select
+              isClearable
+              isSearchable
+              isLoading={clientesLoading}
+              options={clientesOptions}
+              value={clientesOptions.find(opt => opt.value === cliente) || null}
+              onChange={opt => setCliente(opt ? opt.value : '')}
+              placeholder={clientesLoading ? 'Cargando clientes...' : 'Seleccione un cliente'}
+              noOptionsMessage={() => clientesLoading ? 'Cargando...' : 'Sin resultados'}
+              classNamePrefix="react-select"
+            />
           </div>
           <div className="mb-4">
-            <label>MODELO DE MAQUINA (ID):</label>
-            <input type="text" className="border rounded w-full" value={selectedModelId || modeloMaquina} onChange={(e)=>setModeloMaquina(e.target.value)} disabled={!!selectedModelId} />
+            <label>MODELO DE MAQUINA:</label>
+            {selectedModelName ? (
+              <input type="text" className="border rounded w-full bg-gray-100" value={selectedModelName} readOnly />
+            ) : selectedModelId ? (
+              <input type="text" className="border rounded w-full bg-gray-100" value={selectedModelId} readOnly />
+            ) : (
+              <input type="text" className="border rounded w-full" value={modeloMaquina} onChange={(e)=>setModeloMaquina(e.target.value)} />
+            )}
           </div>
           <div className="mb-4">
             <label>SERIE N°:</label>
             <input type="text" className="border rounded w-full" value={serieMaquina} onChange={(e)=>setSerieMaquina(e.target.value)} />
           </div>
-        </>
-      )}
-      </div>
-
-<div  className="border rounded-xl p-4 mb-4 shadow bg-gray-100 border-gray-200">
-      <table className="w-full border-collapse mb-4">
-        <thead>
-          <tr>
-            <th>DETALLE</th>
-            <th>FUNCIONA</th>
-            <th>OBSERVACIONES</th>
-          </tr>
-        </thead>
-        <tbody className="odd:bg-gray-100">
-          {detalles.map((detalle, idx) => {
-            const selectIdNumber = 65 + (idx * 2);
-            const obsIdNumber = selectIdNumber + 1;
-            const selectId = `idPreg${selectIdNumber}`;
-            const obsId = `idPreg${obsIdNumber}`;
-            return (
-            <tr key={detalle}>
-              <td className="border p-2">{detalle}</td>
-              <td className="border p-2 text-center">
-                <select 
-                  className="border rounded mx-auto h-9"
-                  id={selectId}
-                  value={funciona[detalle] || ''}
-                  onChange={(e) => handleSelectChange(detalle, e.target.value, selectIdNumber)}
-                  disabled={readOnly}
-                >
-                  <option value="">Seleccionar</option>
-                  <option value="si">SI</option>
-                  <option value="no">NO</option> 
-                </select>
-              </td>
-              <td className="border p-2">
-                <input 
-                  type="text" 
-                  className="border rounded w-full h-9" 
-                  id={obsId} 
-                  defaultValue={valuesById ? valuesById.get(String(obsIdNumber)) || '' : ''}
-                  onChange={(e)=>handleObsChange(obsIdNumber, e.target.value)} 
-                  disabled={readOnly}
-                />
-              </td>
-            </tr>
-            );
-          })}
-        </tbody>
-      </table>
-
-      </div>
-
-<div className="border rounded-xl p-4 mb-4 shadow bg-white border-gray-200">
-      <div className="mb-4">
-        <label>OBSERVACIONES:</label>
-        <textarea
-          className="border rounded w-full"
-          rows="3"
-          id="idPreg95"
-          value={observaciones}
-          onChange={(e) => { setObservaciones(e.target.value); handleObsChange(95, e.target.value); }}
-          readOnly={readOnly}
-        ></textarea>
-      </div>
-      {!readOnly && (
-        <button type="submit" className="bg-green-700 hover:bg-green-800 text-white p-2 rounded-md mt-4">Enviar</button>
-      )}
+        </div>
+        <div className="border rounded-xl p-4 mb-4 shadow bg-gray-100 border-gray-200">
+          <table className="w-full border-collapse mb-4">
+            <thead>
+              <tr>
+                <th>DETALLE</th>
+                <th>FUNCIONA</th>
+                <th>OBSERVACIONES</th>
+              </tr>
+            </thead>
+            <tbody className="odd:bg-gray-100">
+              {detalles.map((detalle, idx) => {
+                const selectIdNumber = 65 + (idx * 2);
+                const obsIdNumber = selectIdNumber + 1;
+                const selectId = `idPreg${selectIdNumber}`;
+                const obsId = `idPreg${obsIdNumber}`;
+                return (
+                  <tr key={detalle}>
+                    <td className="border p-2">{detalle}</td>
+                    <td className="border p-2 text-center">
+                      <select
+                        className="border rounded mx-auto h-9"
+                        id={selectId}
+                        value={funciona[detalle] || ''}
+                        onChange={(e) => handleSelectChange(detalle, e.target.value, selectIdNumber)}
+                        disabled={readOnly}
+                      >
+                        <option value="">Seleccionar</option>
+                        <option value="si">SI</option>
+                        <option value="no">NO</option>
+                      </select>
+                    </td>
+                    <td className="border p-2">
+                      <input
+                        type="text"
+                        className="border rounded w-full h-9"
+                        id={obsId}
+                        defaultValue={valuesById ? valuesById.get(String(obsIdNumber)) || '' : ''}
+                        onChange={(e)=>handleObsChange(obsIdNumber, e.target.value)}
+                        disabled={readOnly}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="border rounded-xl p-4 mb-4 shadow bg-white border-gray-200">
+          <div className="mb-4">
+            <label>OBSERVACIONES:</label>
+            <textarea
+              className="border rounded w-full"
+              rows="3"
+              id="idPreg95"
+              value={observaciones}
+              onChange={(e) => { setObservaciones(e.target.value); handleObsChange(95, e.target.value); }}
+              readOnly={readOnly}
+            ></textarea>
+          </div>
+          {!readOnly && (
+            <button type="submit" className="bg-green-700 hover:bg-green-800 text-white p-2 rounded-md mt-4">Enviar</button>
+          )}
+        </div>
+      </form>
     </div>
-   </form>
-   </div> 
   );
 };
 

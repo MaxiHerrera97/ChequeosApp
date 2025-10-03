@@ -4,16 +4,15 @@
 // - Producción interna (Linux, LAN): http://192.168.0.222:4173/api
 // - Producción externa (Linux, dominio): https://chequeos.grupozafra.com.ar:4173/api
 //
-// NOTA: Dejamos explícitas las URLs de Linux comentadas para no perderlas.
-// const BASE_URL_LAN = 'http://192.168.0.222:4173/api';
-// const BASE_URL_DOMAIN = 'https://chequeos.grupozafra.com.ar:4173/api';
+// URLs fijas que funcionaban antes (CON puerto 4173)
+const BASE_URL_LAN = 'http://192.168.0.222:4173/api';
+const BASE_URL_DOMAIN = 'https://chequeos.grupozafra.com.ar:4173/api';
+
 const isDev = import.meta && import.meta.env && import.meta.env.DEV;
-const isInternalNetwork = window.location.hostname === '192.168.0.222';
+const isInternalNetwork = typeof window !== 'undefined' && window.location.hostname === '192.168.0.222';
 const baseUrl = isDev
   ? '/api'
-  : (isInternalNetwork
-      ? 'http://192.168.0.222:4173/api'
-      : 'https://chequeos.grupozafra.com.ar:4173/api');
+  : (isInternalNetwork ? BASE_URL_LAN : BASE_URL_DOMAIN);
 
 const API_CONFIG = {
   // URL base de la API usando detección automática
@@ -26,6 +25,7 @@ const API_CONFIG = {
     MODELOS_MAQUINAS: '/modelos-maquinas',
     CHEQUEOS_MAQUINA: '/chequeos-maquina',
     CHEQUEOS_TIPO_MAQUINA: '/chequeos-tipo-maquina',
+    CLIENTES: '/clientes',
     SESIONES: '/sesiones',
     RESPUESTAS: '/respuestas',
     TIPOS_CHEQUEOS: '/tipos-chequeos',
@@ -51,6 +51,7 @@ export const API_URLS = {
   RESPUESTAS: getApiUrl(API_CONFIG.ENDPOINTS.RESPUESTAS),
   TIPOS_CHEQUEOS: getApiUrl(API_CONFIG.ENDPOINTS.TIPOS_CHEQUEOS),
   HISTORIAL: getApiUrl(API_CONFIG.ENDPOINTS.HISTORIAL),
+  CLIENTES: getApiUrl(API_CONFIG.ENDPOINTS.CLIENTES),
   SESION_DETALLE: (idSesion) => getApiUrl(API_CONFIG.ENDPOINTS.SESION_DETALLE(idSesion)),
   SESION_RESPUESTAS: (idSesion) => getApiUrl(API_CONFIG.ENDPOINTS.SESION_RESPUESTAS(idSesion))
 };
