@@ -45,6 +45,21 @@ export default function Historial() {
   const [resultados, setResultados] = useState([]);
   const [error, setError] = useState('');
 
+  const formatArgentina = (dateStr) => {
+    if (!dateStr) return '';
+    // Try to create a Date; if invalid, return original string
+    const d = new Date(dateStr);
+    if (isNaN(d)) return dateStr;
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Argentina/Buenos_Aires',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+    });
+    const parts = formatter.formatToParts(d);
+    const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
+    return `${map.year}-${map.month}-${map.day} ${map.hour}:${map.minute}:${map.second}`;
+  };
+
   useEffect(() => {
     (async () => {
       try {
@@ -189,7 +204,7 @@ export default function Historial() {
               <tr><td className="p-3 text-center text-gray-500" colSpan={7}>Sin resultados</td></tr>
             ) : resultados.map((r)=> (
               <tr key={`${r.idSesion}-${r.fecha || ''}`} className="cursor-pointer hover:bg-green-50" onClick={()=> navigate(`/historial/${r.idSesion}`)}>
-                <td className="border p-2">{r.fecha || r.fechaInicio || ''}</td>
+                <td className="border p-2">{formatArgentina(r.fecha || r.fechaInicio || '')}</td>
                 <td className="border p-2">{r.cliente || ''}</td>
                 <td className="border p-2">{r.tipoChequeo}</td>
                 <td className="border p-2">{r.tipoMaquina || ''}</td>

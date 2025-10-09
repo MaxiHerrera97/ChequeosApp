@@ -8,6 +8,7 @@ const ChequeoGm = ({ selectedModelId, selectedModelName = '', readOnly = false, 
   // Si no viene por params (ruta /chequeo-general), usar 6
   const idTipoChequeo = paramTipoChequeo !== undefined ? paramTipoChequeo : 6;
   const [observaciones, setObservaciones] = useState('');
+  const [idSesion, setIdSesion] = useState(null);
   const [funciona, setFunciona] = useState({}); // Estado para almacenar las selecciones
   const [cliente, setCliente] = useState('');
   const [clientesOptions, setClientesOptions] = useState([]);
@@ -33,6 +34,8 @@ const ChequeoGm = ({ selectedModelId, selectedModelName = '', readOnly = false, 
   const [statusType, setStatusType] = useState('success'); // 'success' | 'error'
   const [showToast, setShowToast] = useState(false);
   const [fechaInicio, setFechaInicio] = useState('');
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadingDocs, setUploadingDocs] = useState(false);
 
   useEffect(() => {
     const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
@@ -89,6 +92,80 @@ const ChequeoGm = ({ selectedModelId, selectedModelName = '', readOnly = false, 
     setRespuestasMap(prev => ({ ...prev, [idPregunta]: value }));
   };
 
+  const handleUploadImages = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.multiple = true;
+    input.onchange = async (e) => {
+      const files = Array.from(e.target.files);
+      if (files.length === 0) return;
+
+      setUploadingImages(true);
+      try {
+        const formData = new FormData();
+        files.forEach(file => {
+          formData.append('images', file);
+        });
+        
+        // Requiere idSesion creado
+        if (!idSesion) {
+          throw new Error('Primero envía el formulario para generar la sesión');
+        }
+        formData.append('idSesion', idSesion);
+
+        const response = await fetch(API_URLS.UPLOAD_IMAGES, {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+        
+        if (response.ok) {
+          setStatusType('success');
+          setStatusMsg(result.message);
+          setShowToast(true);
+        } else {
+          throw new Error(result.message || 'Error al subir imágenes');
+        }
+      } catch (error) {
+        setStatusType('error');
+        setStatusMsg(error.message);
+        setShowToast(true);
+      } finally {
+        setUploadingImages(false);
+      }
+    };
+    input.click();
+  };
+
+  const handleUploadDocs = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/pdf';
+    input.multiple = true;
+    input.onchange = async (e) => {
+      const files = Array.from(e.target.files);
+      if (files.length === 0) return;
+      if (!idSesion) { setStatusType('error'); setStatusMsg('Primero guarda el formulario para generar la sesión'); setShowToast(true); return; }
+      setUploadingDocs(true);
+      try {
+        const formData = new FormData();
+        files.forEach(f => formData.append('docs', f));
+        formData.append('idSesion', idSesion);
+        const response = await fetch(API_URLS.UPLOAD_DOCS, { method: 'POST', body: formData });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Error al subir documentos');
+        setStatusType('success'); setStatusMsg(result.message); setShowToast(true);
+      } catch (err) {
+        setStatusType('error'); setStatusMsg(err.message); setShowToast(true);
+      } finally {
+        setUploadingDocs(false);
+      }
+    };
+    input.click();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const ok = window.confirm('Una vez envíes este formulario, no podrás editarlo. ¿Estás seguro que deseas enviar?');
@@ -142,6 +219,7 @@ const ChequeoGm = ({ selectedModelId, selectedModelName = '', readOnly = false, 
         throw new Error(data.message || 'Error al guardar la sesión');
       }
       const data = await resp.json();
+      setIdSesion(data.idSesion);
 
       // Preparar respuestas (incluye selects 65..93, observaciones 66..94 y textarea 95)
       const idsPregunta = Object.keys(respuestasMap);
@@ -297,7 +375,27 @@ const ChequeoGm = ({ selectedModelId, selectedModelName = '', readOnly = false, 
             ></textarea>
           </div>
           {!readOnly && (
-            <button type="submit" className="bg-green-700 hover:bg-green-800 text-white p-2 rounded-md mt-4">Enviar</button>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-4">
+              <button type="submit" className="bg-green-700 hover:bg-green-800 text-white px-6 py-2 rounded-md">
+                Enviar
+              </button>
+              <button 
+                type="button" 
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleUploadDocs}
+                disabled={uploadingDocs || !idSesion}
+              >
+                {uploadingDocs ? '⏳ Subiendo...' : (!idSesion ? '📄 Subir PDF (guardar primero)' : '📄 Subir PDF')}
+              </button>
+              <button 
+                type="button" 
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleUploadImages}
+                disabled={uploadingImages || !idSesion}
+              >
+                {uploadingImages ? '⏳ Subiendo...' : (!idSesion ? '📷 Subir Imágenes (guardar primero)' : '📷 Subir Imágenes')}
+              </button>
+            </div>
           )}
         </div>
       </form>

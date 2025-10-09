@@ -5,3 +5,5 @@ servidor/bd.js
 servidor/basededatos.sql
 servidor/backup/
 servidor/node_modules/
+servidor/gcs-service-account.json
+servidor/*.json

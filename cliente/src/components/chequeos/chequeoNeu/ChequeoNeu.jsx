@@ -31,6 +31,9 @@ const ChequeoNeu = ({ selectedModelId, readOnly = false, valuesById }) => {
   const [statusMsg, setStatusMsg] = useState('');
   const [statusType, setStatusType] = useState('success');
   const [showToast, setShowToast] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadingDocs, setUploadingDocs] = useState(false);
+  const [idSesion, setIdSesion] = useState(null);
 
   const getNowBuenosAires = () => {
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -45,6 +48,77 @@ const ChequeoNeu = ({ selectedModelId, readOnly = false, valuesById }) => {
 
   const handleRespuestaChange = (idPregunta, valor) => {
     setRespuestasMap(prev => ({ ...prev, [idPregunta]: valor }));
+  };
+
+  const handleUploadImages = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.multiple = true;
+    input.onchange = async (e) => {
+      const files = Array.from(e.target.files);
+      if (files.length === 0) return;
+
+      setUploadingImages(true);
+      try {
+        const formData = new FormData();
+        files.forEach(file => {
+          formData.append('images', file);
+        });
+        
+        if (!idSesion) throw new Error('Primero envía el formulario para generar la sesión');
+        formData.append('idSesion', idSesion);
+
+        const response = await fetch(API_URLS.UPLOAD_IMAGES, {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+        
+        if (response.ok) {
+          setStatusType('success');
+          setStatusMsg(result.message);
+          setShowToast(true);
+        } else {
+          throw new Error(result.message || 'Error al subir imágenes');
+        }
+      } catch (error) {
+        setStatusType('error');
+        setStatusMsg(error.message);
+        setShowToast(true);
+      } finally {
+        setUploadingImages(false);
+      }
+    };
+    input.click();
+  };
+
+  const handleUploadDocs = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/pdf';
+    input.multiple = true;
+    input.onchange = async (e) => {
+      const files = Array.from(e.target.files);
+      if (files.length === 0) return;
+      if (!idSesion) { setStatusType('error'); setStatusMsg('Primero guarda el formulario para generar la sesión'); setShowToast(true); return; }
+      setUploadingDocs(true);
+      try {
+        const formData = new FormData();
+        files.forEach(f => formData.append('docs', f));
+        formData.append('idSesion', idSesion);
+        const response = await fetch(API_URLS.UPLOAD_DOCS, { method: 'POST', body: formData });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Error al subir documentos');
+        setStatusType('success'); setStatusMsg(result.message); setShowToast(true);
+      } catch (err) {
+        setStatusType('error'); setStatusMsg(err.message); setShowToast(true);
+      } finally {
+        setUploadingDocs(false);
+      }
+    };
+    input.click();
   };
 
   const handleSubmit = async (e) => {
@@ -95,6 +169,7 @@ const ChequeoNeu = ({ selectedModelId, readOnly = false, valuesById }) => {
         throw new Error(data.message || 'Error al guardar la sesión');
       }
       const data = await resp.json();
+      setIdSesion(data.idSesion);
 
       // Preparar respuestas (inputs idPreg96 a idPreg119)
       const idsPregunta = Object.keys(respuestasMap);
@@ -287,9 +362,27 @@ const ChequeoNeu = ({ selectedModelId, readOnly = false, valuesById }) => {
         </div>
 
         {!readOnly && (
-          <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg mt-6 block mx-auto text-lg shadow w-full sm:w-auto">
-            Enviar
-          </button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-6">
+            <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg text-lg shadow w-full sm:w-auto">
+              Enviar
+            </button>
+            <button 
+              type="button" 
+              className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg text-lg shadow w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleUploadImages}
+              disabled={uploadingImages || !idSesion}
+            >
+              {uploadingImages ? '⏳ Subiendo...' : (!idSesion ? '📷 Subir Imágenes (guardar primero)' : '📷 Subir Imágenes')}
+            </button>
+            <button
+              type="button"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-lg text-lg shadow w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleUploadDocs}
+              disabled={uploadingDocs || !idSesion}
+            >
+              {uploadingDocs ? '⏳ Subiendo...' : (!idSesion ? '📄 Subir PDF (guardar primero)' : '📄 Subir PDF')}
+            </button>
+          </div>
         )}
       </form>
     </div>
